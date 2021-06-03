@@ -9,8 +9,8 @@ static const char *prompt      = NULL; /* -p  option; prompt to the left of inpu
 static const char *colors[SchemeLast][2] = {
 	/* fg, bg */
 	[SchemeNorm] = { "#666666", "#000000" },
-	[SchemeSel]  = { "#aaaaaa", "#282828" },
-	[SchemeSelHighlight]  = { "#aaaaaa", "#484848" },
+	[SchemeSel]  = { "#aaaaaa", "#252525" },
+	[SchemeSelHighlight]  = { "#aaaaaa", "#252525" },
 	[SchemeNormHighlight] = { "#666666", "#000000" },
 	[SchemeOut] = { "#000000", "#00ffff" },
 };
