@@ -6,8 +6,8 @@ static int fuzzy = 1;  /* -F  option; if 0, dmenu doesn't use fuzzy matching */
 /* -fn option overrides fonts[0]; default X11 font or font set */
 static const char *fonts[] = { "peep:size=12" , "Symbols Nerd Font:size=10", "JoyPixels:size=16" };
 static const char *prompt      = NULL; /* -p  option; prompt to the left of input field */
-#if defined __has_include && __has_include ("/tmp/wal-dmenu.h")
-#include "/tmp/wal-dmenu.h"
+#if defined __has_include && __has_include ("pywal.h")
+#include "pywal.h"
 #endif
 #ifndef PYWAL
 static const char *colors[SchemeLast][2] = {
