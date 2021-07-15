@@ -6,19 +6,30 @@ static int fuzzy = 1;  /* -F  option; if 0, dmenu doesn't use fuzzy matching */
 /* -fn option overrides fonts[0]; default X11 font or font set */
 static const char *fonts[] = { "peep:size=12" , "Symbols Nerd Font:size=10", "JoyPixels:size=16" };
 static const char *prompt      = NULL; /* -p  option; prompt to the left of input field */
-#if defined __has_include && __has_include ("pywal.h")
-#include "pywal.h"
-#endif
-#ifndef PYWAL
+
+/* specify default colors */
+static char col_bg[]     = "#000000";
+static char col_fg[]     = "#666666";
+static char col_sel_fg[] = "#aaaaaa";
+static char col_out[]    = "#dddddd";
+
+/* specify colors to read from xresources */
+XCOLORS
+    XLOAD( col_bg,     "*.background" );
+    XLOAD( col_fg,     "*.color2"     );
+    XLOAD( col_sel_fg, "*.color14"    );
+    XLOAD( col_out,    "*.color4"     );
+XCOLORS_END
+
 static const char *colors[SchemeLast][2] = {
     /*                fg         bg      */
-    [SchemeNorm] = { "#666666", "#000000" },
-    [SchemeSel]  = { "#aaaaaa", "#252525" },
-    [SchemeSelHighlight]  = { "#aaaaaa", "#252525" },
-    [SchemeNormHighlight] = { "#666666", "#000000" },
-    [SchemeOut] = { "#000000", "#00ffff" },
+    [SchemeNorm]           = { col_fg,        col_bg },
+    [SchemeNormHighlight]  = { col_fg,        col_bg },
+    [SchemeSel]            = { col_sel_fg,    col_bg },
+    [SchemeSelHighlight]   = { col_sel_fg,    col_bg },
+    [SchemeOut]            = { col_out,     "#00ffff" },
 };
-#endif
+
 /* -l option; if nonzero, dmenu uses vertical list with given number of lines */
 static unsigned int lines = 0;
 

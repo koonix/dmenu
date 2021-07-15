@@ -57,7 +57,9 @@ static XIC xic;
 static Drw *drw;
 static Clr *scheme[SchemeLast];
 
+#include "xrdb.h"
 #include "config.h"
+#include "xrdb.c"
 
 static char * cistrstr(const char *s, const char *sub);
 static int (*fstrncmp)(const char *, const char *, size_t) = strncasecmp;
@@ -840,6 +842,9 @@ main(int argc, char *argv[])
 {
 	XWindowAttributes wa;
 	int i, fast = 0;
+
+	/* load xrdb colors */
+	xrdb_read();
 
 	for (i = 1; i < argc; i++)
 		/* these options take no arguments */
