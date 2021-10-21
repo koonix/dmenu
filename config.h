@@ -23,11 +23,11 @@ XCOLORS
 XCOLORS_END
 
 static const char *colors[SchemeLast][2] = {
-    /*                fg         bg      */
-    [SchemeNorm]           = { col_fg,        col_bg },
-    [SchemeNormHighlight]  = { col_fg,        col_bg },
-    [SchemeSel]            = { col_sel_fg,    col_bg },
-    [SchemeSelHighlight]   = { col_sel_fg,    col_bg },
+    /*                         fg             bg    */
+    [SchemeNorm]           = { col_sel_fg,    col_bg },
+    [SchemeNormHighlight]  = { col_sel_fg,    col_bg },
+    [SchemeSel]            = { col_bg,        col_out },
+    [SchemeSelHighlight]   = { col_bg,        col_out },
     [SchemeOut]            = { col_out,     "#00ffff" },
 };
 
