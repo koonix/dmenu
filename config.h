@@ -26,8 +26,8 @@ static const char *colors[SchemeLast][2] = {
     /*                         fg          bg      */
     [SchemeNorm]           = { col_fg,     col_bg },
     [SchemeNormHighlight]  = { col_fg,     col_bg },
-    [SchemeSel]            = { "white",    "maroon" },
-    [SchemeSelHighlight]   = { "white",    "maroon" },
+    [SchemeSel]            = { "white",    "darkgreen" },
+    [SchemeSelHighlight]   = { "white",    "darkgreen" },
     [SchemeOut]            = { col_out,    "#00ffff" },
 };
 
