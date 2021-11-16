@@ -9,32 +9,28 @@ static const char *fonts[] = { "peep:size=12" , "Symbols Nerd Font:size=10", "Jo
 static const char *prompt      = NULL; /* -p  option; prompt to the left of input field */
 
 /* specify default colors */
-static char col_bg[]     = "#000000";
-static char col_fg[]     = "#666666";
-static char col_sel_fg[] = "#aaaaaa";
-static char col_out[]    = "#dddddd";
+static char cbg[] = "#000000";
+static char cfg[] = "#777777";
 
 /* specify colors to read from xresources */
 XCOLORS
-    XLOAD( col_bg,     "*.background" );
-    XLOAD( col_fg,     "*.color2"     );
-    XLOAD( col_sel_fg, "*.color14"    );
-    XLOAD( col_out,    "*.color4"     );
+    XLOAD( cbg, "*.background" );
+    XLOAD( cfg, "*.color2"     );
 XCOLORS_END
 
 static const char *colors[SchemeLast][2] = {
-    /*                         fg          bg      */
-    [SchemeNorm]           = { col_fg,     col_bg },
-    [SchemeNormHighlight]  = { col_fg,     col_bg },
-    [SchemeSel]            = { "white",    "darkgreen" },
-    [SchemeSelHighlight]   = { "white",    "darkgreen" },
-    [SchemeOut]            = { col_out,    "#00ffff" },
+    /*                         fg       bg        */
+    [SchemeNorm]           = { cfg,     cbg        },
+    [SchemeNormHighlight]  = { cfg,     cbg        },
+    [SchemeSel]            = { "white", "#005577"  },
+    [SchemeSelHighlight]   = { "cyan",  "#005577"  },
+    [SchemeOut]            = { "black", "darkcyan" },
 };
 
 static const unsigned int alphas[SchemeLast][2] = {
     [SchemeNorm] = { OPAQUE, alpha },
-    [SchemeSel] = { OPAQUE, alpha },
-    [SchemeOut] = { OPAQUE, alpha },
+    [SchemeSel]  = { OPAQUE, alpha },
+    [SchemeOut]  = { OPAQUE, alpha },
 };
 
 /* -l option; if nonzero, dmenu uses vertical list with given number of lines */
