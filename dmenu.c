@@ -13,6 +13,7 @@
 #include <X11/Xatom.h>
 #include <X11/Xproto.h>
 #include <X11/Xutil.h>
+#include <X11/XKBlib.h>
 #ifdef XINERAMA
 #include <X11/extensions/Xinerama.h>
 #endif
@@ -65,6 +66,8 @@ static Visual *visual;
 static int depth;
 static Colormap cmap;
 
+static unsigned int xkblayoutorig = 0;
+
 #include "xrdb.h"
 #include "config.h"
 #include "xrdb.c"
@@ -114,6 +117,9 @@ cleanup(void)
 	for (i = 0; i < SchemeLast; i++)
 		free(scheme[i]);
 	drw_free(drw);
+	/* restore the keyboard layout */
+	if (xkblayout >= 0)
+		XkbLockGroup(dpy, XkbUseCoreKbd, xkblayoutorig);
 	XSync(dpy, False);
 	XCloseDisplay(dpy);
 }
@@ -849,6 +855,14 @@ setup(void)
 	}
 	drw_resize(drw, mw, mh);
 	drawmenu();
+
+	/* save the keyboard layout, then set it to 0 */
+	if (xkblayout >= 0) {
+		XkbStateRec xkbstate;
+		XkbGetState(dpy, XkbUseCoreKbd, &xkbstate);
+		xkblayoutorig = (unsigned int)xkbstate.group;
+		XkbLockGroup(dpy, XkbUseCoreKbd, (unsigned int)xkblayout);
+	}
 }
 
 static void
