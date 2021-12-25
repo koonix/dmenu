@@ -68,9 +68,52 @@ static Colormap cmap;
 
 static unsigned int xkblayoutorig = 0;
 
-#include "xrdb.h"
+/* xrdb macros and functons */
+#include <X11/Xresource.h>
+void xrdbcolors(XrmDatabase xrdb);
+#define XCOLORS \
+	void xrdbcolors(XrmDatabase xrdb) { \
+		char *type; \
+		XrmValue value;
+#define XCOLORS_END }
+#define XLOAD(V,R) \
+	if (XrmGetResource(xrdb, R, NULL, &type, &value) == True) { \
+		if (value.addr != NULL && strnlen(value.addr, 8) == 7 && value.addr[0] == '#') { \
+			int i = 1; \
+			for (; i <= 6; i++) { \
+				if (value.addr[i] < 48) break; \
+				if (value.addr[i] > 57 && value.addr[i] < 65) break; \
+				if (value.addr[i] > 70 && value.addr[i] < 97) break; \
+				if (value.addr[i] > 102) break; \
+			} \
+			if (i == 7) { \
+				strncpy(V, value.addr, 7); \
+				V[7] = '\0'; \
+			} \
+		} \
+	}
+static void
+xrdbread()
+{
+	Display *display;
+	char * resm;
+	XrmDatabase xrdb;
+
+	display = XOpenDisplay(NULL);
+	if (display != NULL) {
+		resm = XResourceManagerString(display);
+		if (resm != NULL) {
+			xrdb = XrmGetStringDatabase(resm);
+			if (xrdb != NULL) {
+				xrdbcolors(xrdb);
+			}
+		}
+	}
+	XCloseDisplay(display);
+}
+/* end of xrdb macros and functions */
+
 #include "config.h"
-#include "xrdb.c"
 
 static char * cistrstr(const char *s, const char *sub);
 static int (*fstrncmp)(const char *, const char *, size_t) = strncasecmp;
@@ -756,7 +799,7 @@ run(void)
 static void
 setup(void)
 {
-	int x, y, i, j;
+	int x, y, i = 0, j;
 	unsigned int du;
 	XSetWindowAttributes swa;
 	XIM xim;
@@ -800,10 +843,13 @@ setup(void)
 					}
 		}
 		/* no focused window is on screen, so use pointer location instead */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wint-in-bool-context"
 		if (mon < 0 && !area && XQueryPointer(dpy, root, &dw, &dw, &x, &y, &di, &di, &du))
 			for (i = 0; i < n; i++)
 				if (INTERSECT(x, y, 1, 1, info[i]))
 					break;
+#pragma GCC diagnostic pop
 
 		x = info[i].x_org;
 		y = info[i].y_org + (topbar ? 0 : info[i].height - mh);
@@ -881,7 +927,7 @@ main(int argc, char *argv[])
 	int i, fast = 0;
 
 	/* load xrdb colors */
-	xrdb_read();
+	xrdbread();
 
 	for (i = 1; i < argc; i++)
 		/* these options take no arguments */
