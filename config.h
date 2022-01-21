@@ -13,23 +13,13 @@ static int fuzzy = 1;  /* -F  option; if 0, dmenu doesn't use fuzzy matching */
 static const char *fonts[] = { "peep:size=12" , "Symbols Nerd Font:size=10", "JoyPixels:size=16" };
 static const char *prompt      = NULL; /* -p  option; prompt to the left of input field */
 
-/* specify default colors */
-static char cbg[] = "#000000";
-static char cfg[] = "#777777";
-
-/* specify colors to read from xresources */
-XCOLORS
-    XLOAD( cbg, "*.background" );
-    XLOAD( cfg, "*.color2"     );
-XCOLORS_END
-
 static const char *colors[SchemeLast][2] = {
-    /*                         fg       bg        */
-    [SchemeNorm]           = { cfg,     cbg        },
-    [SchemeNormHighlight]  = { cfg,     cbg        },
-    [SchemeSel]            = { "white", "#005577"  },
-    [SchemeSelHighlight]   = { "cyan",  "#005577"  },
-    [SchemeOut]            = { "black", "darkcyan" },
+    /*                         fg          bg        */
+    [SchemeNorm]           = { "#777777", "#000000"  },
+    [SchemeNormHighlight]  = { "#777777", "#000000"  },
+    [SchemeSel]            = { "white",   "#005577"  },
+    [SchemeSelHighlight]   = { "cyan",    "#005577"  },
+    [SchemeOut]            = { "black",   "darkcyan" },
 };
 
 static const unsigned int alphas[SchemeLast][2] = {
