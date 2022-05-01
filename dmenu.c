@@ -374,7 +374,7 @@ fuzzymatch(void)
 			for (i = 0; i < itext_len && (c = it->text[i]); i++) {
 				/* fuzzy match pattern */
 				if (!fstrncmp(&text[pidx], &c, 1)) {
-					if(sidx == -1)
+					if (sidx == -1)
 						sidx = i;
 					pidx++;
 					if (pidx == text_len) {
@@ -1181,7 +1181,7 @@ main(int argc, char *argv[])
 	return 1; /* unreachable */
 }
 
- void
+void
 xinitvisual()
 {
 	XVisualInfo *infos;
@@ -1198,7 +1198,7 @@ xinitvisual()
 
 	infos = XGetVisualInfo(dpy, masks, &tpl, &nitems);
 	visual = NULL;
-	for(i = 0; i < nitems; i ++) {
+	for (i = 0; i < nitems; i ++) {
 		fmt = XRenderFindVisualFormat(dpy, infos[i].visual);
 		if (fmt->type == PictTypeDirect && fmt->direct.alphaMask) {
 			visual = infos[i].visual;
