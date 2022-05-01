@@ -987,13 +987,10 @@ setup(void)
 					}
 		}
 		/* no focused window is on screen, so use pointer location instead */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wint-in-bool-context"
 		if (mon < 0 && !area && XQueryPointer(dpy, root, &dw, &dw, &x, &y, &di, &di, &du))
 			for (i = 0; i < n; i++)
 				if (INTERSECT(x, y, 1, 1, info[i]) != 0)
 					break;
-#pragma GCC diagnostic pop
 
 		x = info[i].x_org;
 		y = info[i].y_org + (topbar ? 0 : info[i].height - mh);
