@@ -1120,13 +1120,13 @@ main(int argc, char *argv[])
 		else if (!strcmp(argv[i], "-fn"))  /* font or font set */
 			fonts[0] = argv[++i];
 		else if (!strcmp(argv[i], "-nb"))  /* normal background color */
-			colors[SchemeNorm][ColBg] = argv[++i];
+			colors[SchemeNorm][ColBg] = colors[SchemeNormHighlight][ColBg] = argv[++i];
 		else if (!strcmp(argv[i], "-nf"))  /* normal foreground color */
-			colors[SchemeNorm][ColFg] = argv[++i];
+			colors[SchemeNorm][ColFg] = colors[SchemeNormHighlight][ColFg] = argv[++i];
 		else if (!strcmp(argv[i], "-sb"))  /* selected background color */
-			colors[SchemeSel][ColBg] = argv[++i];
+			colors[SchemeSel][ColBg] = colors[SchemeSelHighlight][ColBg] = argv[++i];
 		else if (!strcmp(argv[i], "-sf"))  /* selected foreground color */
-			colors[SchemeSel][ColFg] = argv[++i];
+			colors[SchemeSel][ColFg] = colors[SchemeSelHighlight][ColFg] = argv[++i];
 		else if (!strcmp(argv[i], "-nhb")) /* normal hi background color */
 			colors[SchemeNormHighlight][ColBg] = argv[++i];
 		else if (!strcmp(argv[i], "-nhf")) /* normal hi foreground color */
