@@ -15,8 +15,7 @@ static const unsigned int alpha = 0xff;
 static const char *fonts[] = {
 	"peep:size=12",
 	"Vazirmatn NL:size=10",
-	"Symbols Nerd Font:size=10",
-	"JoyPixels:size=16"
+	"Symbols Nerd Font:size=11",
 };
 
 static const char *colors[SchemeLast][2] = {
