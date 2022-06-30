@@ -46,7 +46,6 @@ struct item {
 
 static char numbers[NUMBERSBUFSIZE] = "";
 static char text[BUFSIZ] = "";
-static char fribiditext[BUFSIZ] = "";
 static char *embed;
 static int bh, mw, mh;
 static int inputw = 0, promptw, passwd = 0;
@@ -100,21 +99,21 @@ appenditem(struct item *item, struct item **list, struct item **last)
 }
 
 static void
-applyfribidi(char *str)
+fribidi(char *in, char *out)
 {
-	FriBidiStrIndex len = strlen(str);
+	FriBidiStrIndex len;
+	FriBidiCharSet charset;
 	FriBidiChar logical[BUFSIZ];
 	FriBidiChar visual[BUFSIZ];
 	FriBidiParType base = FRIBIDI_PAR_ON;
-	FriBidiCharSet charset;
 
-	fribiditext[0] = 0;
-	if (len > 0) {
-		charset = fribidi_parse_charset("UTF-8");
-		len = fribidi_charset_to_unicode(charset, str, len, logical);
-		fribidi_log2vis(logical, len, &base, visual, NULL, NULL, NULL);
-		len = fribidi_unicode_to_charset(charset, visual, len, fribiditext);
-	}
+	out[0] = '\0';
+	if (!(len = strlen(in)))
+		return;
+	charset = fribidi_parse_charset("UTF-8");
+	len = fribidi_charset_to_unicode(charset, in, len, logical);
+	fribidi_log2vis(logical, len, &base, visual, NULL, NULL, NULL);
+	fribidi_unicode_to_charset(charset, visual, len, out);
 }
 
 static void
@@ -214,6 +213,8 @@ static int
 drawitem(struct item *item, int x, int y, int w)
 {
 	int r;
+	char biditext[BUFSIZ];
+
 	if (item == sel)
 		drw_setscheme(drw, scheme[SchemeSel]);
 	else if (item->out)
@@ -221,8 +222,8 @@ drawitem(struct item *item, int x, int y, int w)
 	else
 		drw_setscheme(drw, scheme[SchemeNorm]);
 
-	applyfribidi(item->text);
-	r = drw_text(drw, x, y, w, bh, lrpad / 2, fribiditext, 0);
+	fribidi(item->text, biditext);
+	r = drw_text(drw, x, y, w, bh, lrpad / 2, biditext, 0);
 	drawhighlights(item, x, y, w);
 	return r;
 }
@@ -249,6 +250,7 @@ drawmenu(void)
 	struct item *item;
 	int x = 0, y = 0, w;
 	char *censort;
+	char biditext[BUFSIZ];
 
 	drw_setscheme(drw, scheme[SchemeNorm]);
 	drw_rect(drw, 0, 0, mw, mh, 1, 1);
@@ -266,8 +268,8 @@ drawmenu(void)
 		drw_text(drw, x, 0, w, bh, lrpad / 2, censort, 0);
 		free(censort);
 	} else {
-		applyfribidi(text);
-		drw_text(drw, x, 0, w, bh, lrpad / 2, fribiditext, 0);
+		fribidi(text, biditext);
+		drw_text(drw, x, 0, w, bh, lrpad / 2, biditext, 0);
 	}
 
 	curpos = TEXTW(text) - TEXTW(&text[cursor]);
