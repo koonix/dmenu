@@ -33,9 +33,7 @@
 #define OPAQUE                0xffU
 
 /* enums */
-enum { SchemeNorm, SchemeSel, SchemeNormHighlight, SchemeSelHighlight,
-       SchemeOut, SchemeLast }; /* color schemes */
-
+enum { SchemeNorm, SchemeSel, SchemeOut, SchemeLast }; /* color schemes */
 
 struct item {
 	char *text;
@@ -171,44 +169,6 @@ cistrstr(const char *h, const char *n)
 	return NULL;
 }
 
-static void
-drawhighlights(struct item *item, int x, int y, int maxw)
-{
-	int i, indent;
-	char *highlight;
-	char c;
-
-	if (!(strlen(item->text) && strlen(text)))
-		return;
-
-	drw_setscheme(drw, scheme[item == sel
-	                   ? SchemeSelHighlight
-	                   : SchemeNormHighlight]);
-	for (i = 0, highlight = item->text; *highlight && text[i];) {
-		if (!fstrncmp(&(*highlight), &text[i], 1)) {
-			/* get indentation */
-			c = *highlight;
-			*highlight = '\0';
-			indent = TEXTW(item->text);
-			*highlight = c;
-
-			/* highlight character */
-			c = highlight[1];
-			highlight[1] = '\0';
-			drw_text(
-				drw,
-				x + indent - (lrpad / 2),
-				y,
-				MIN(maxw - indent, TEXTW(highlight) - lrpad),
-				bh, 0, highlight, 0
-			);
-			highlight[1] = c;
-			i++;
-		}
-		highlight++;
-	}
-}
-
 static int
 drawitem(struct item *item, int x, int y, int w)
 {
@@ -224,7 +184,6 @@ drawitem(struct item *item, int x, int y, int w)
 
 	fribidi(item->text, biditext);
 	r = drw_text(drw, x, y, w, bh, lrpad / 2, biditext, 0);
-	drawhighlights(item, x, y, w);
 	return r;
 }
 
@@ -1079,8 +1038,7 @@ static void
 usage(void)
 {
 	fputs("usage: dmenu [-bFPfsv] [-l lines] [-p prompt] [-fn font] [-m monitor]\n"
-	      "             [-nb color] [-nf color] [-sb color] [-sf color]\n"
-	      "             [-nhb color] [-nhf color] [-shb color] [-shf color] [-w windowid]\n", stderr);
+	      "             [-nb color] [-nf color] [-sb color] [-sf color] [-w windowid]\n", stderr);
 	exit(1);
 }
 
@@ -1123,21 +1081,13 @@ main(int argc, char *argv[])
 		else if (!strcmp(argv[i], "-fn"))  /* font or font set */
 			fonts[0] = argv[++i];
 		else if (!strcmp(argv[i], "-nb"))  /* normal background color */
-			colors[SchemeNorm][ColBg] = colors[SchemeNormHighlight][ColBg] = argv[++i];
+			colors[SchemeNorm][ColBg] = argv[++i];
 		else if (!strcmp(argv[i], "-nf"))  /* normal foreground color */
-			colors[SchemeNorm][ColFg] = colors[SchemeNormHighlight][ColFg] = argv[++i];
+			colors[SchemeNorm][ColFg] = argv[++i];
 		else if (!strcmp(argv[i], "-sb"))  /* selected background color */
-			colors[SchemeSel][ColBg] = colors[SchemeSelHighlight][ColBg] = argv[++i];
+			colors[SchemeSel][ColBg] = argv[++i];
 		else if (!strcmp(argv[i], "-sf"))  /* selected foreground color */
-			colors[SchemeSel][ColFg] = colors[SchemeSelHighlight][ColFg] = argv[++i];
-		else if (!strcmp(argv[i], "-nhb")) /* normal hi background color */
-			colors[SchemeNormHighlight][ColBg] = argv[++i];
-		else if (!strcmp(argv[i], "-nhf")) /* normal hi foreground color */
-			colors[SchemeNormHighlight][ColFg] = argv[++i];
-		else if (!strcmp(argv[i], "-shb")) /* selected hi background color */
-			colors[SchemeSelHighlight][ColBg] = argv[++i];
-		else if (!strcmp(argv[i], "-shf")) /* selected hi foreground color */
-			colors[SchemeSelHighlight][ColFg] = argv[++i];
+			colors[SchemeSel][ColFg] = argv[++i];
 		else if (!strcmp(argv[i], "-w"))   /* embedding window id */
 			embed = argv[++i];
 		else
