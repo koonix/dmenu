@@ -383,10 +383,6 @@ fuzzymatch(void)
 static void
 match(void)
 {
-	if (fuzzy) {
-		fuzzymatch();
-		return;
-	}
 	static char **tokv = NULL;
 	static int tokn = 0;
 
@@ -394,6 +390,11 @@ match(void)
 	int i, tokc = 0;
 	size_t len, textsize;
 	struct item *item, *lprefix, *lsubstr, *prefixend, *substrend;
+
+	if (fuzzy) {
+		fuzzymatch();
+		return;
+	}
 
 	strcpy(buf, text);
 	/* separate input text into tokens to be matched individually */
@@ -936,6 +937,7 @@ setup(void)
 	Window pw;
 	int a, di, n, area = 0;
 #endif
+
 	/* init appearance */
 	for (j = 0; j < SchemeLast; j++)
 		scheme[j] = drw_scm_create(drw, colors[j], alphas[i], 2);
@@ -1000,8 +1002,9 @@ setup(void)
 	swa.event_mask = ExposureMask | KeyPressMask | VisibilityChangeMask |
 	                 ButtonPressMask | PointerMotionMask;
 	win = XCreateWindow(dpy, parentwin, x, y, mw, mh, 0,
-	                    depth, CopyFromParent, visual,
-	                    CWOverrideRedirect | CWBackPixel | CWBorderPixel | CWColormap | CWEventMask, &swa);
+		depth, CopyFromParent, visual,
+		CWOverrideRedirect | CWBackPixel | CWBorderPixel | CWColormap | CWEventMask, &swa);
+
 	XSetClassHint(dpy, win, &ch);
 
 
@@ -1037,7 +1040,7 @@ setup(void)
 static void
 usage(void)
 {
-	fputs("usage: dmenu [-bFPfsv] [-l lines] [-p prompt] [-fn font] [-m monitor]\n"
+	fputs("usage: dmenu [-bFPfsiv] [-l lines] [-p prompt] [-fn font] [-m monitor]\n"
 	      "             [-nb color] [-nf color] [-sb color] [-sf color] [-w windowid]\n", stderr);
 	exit(1);
 }
@@ -1057,7 +1060,7 @@ main(int argc, char *argv[])
 			topbar = 0;
 		else if (!strcmp(argv[i], "-f"))   /* grabs keyboard before reading stdin */
 			fast = 1;
-		else if (!strcmp(argv[i], "-F"))   /* grabs keyboard before reading stdin */
+		else if (!strcmp(argv[i], "-F"))   /* enables fuzzy matching */
 			fuzzy = 0;
 		else if (!strcmp(argv[i], "-s")) { /* case-sensitive item matching */
 			fstrncmp = strncmp;
@@ -1066,8 +1069,7 @@ main(int argc, char *argv[])
 		else if (!strcmp(argv[i], "-P"))   /* input password */
 			passwd = 1;
 		/* case-insensitive item matching
-		 * deprecated because of case-insensitive patch;
-		 * only here for compatiblity */
+		 * unneeded because of the case-insensitive patch; retained only for compatiblity */
 		else if (!strcmp(argv[i], "-i")) {}
 		else if (i + 1 == argc)
 			usage();
