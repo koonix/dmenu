@@ -3,7 +3,7 @@
 dmenu \- dynamic menu
 .SH SYNOPSIS
 .B dmenu
-.RB [ \-bFPfsv ]
+.RB [ \-bFPfsiv ]
 .RB [ \-l
 .IR lines ]
 .RB [ \-m
@@ -19,14 +19,6 @@ dmenu \- dynamic menu
 .RB [ \-sb
 .IR color ]
 .RB [ \-sf
-.IR color ]
-.RB [ \-nhb
-.IR color ]
-.RB [ \-nhf
-.IR color ]
-.RB [ \-shb
-.IR color ]
-.RB [ \-shf
 .IR color ]
 .RB [ \-w
 .IR windowid ]
@@ -62,6 +54,11 @@ is faster, but will lock up X until stdin reaches end\-of\-file.
 .B \-s
 dmenu matches menu items case sensitively.
 .TP
+.B \-i
+dmenu matches menu items case insensitively.
+since this is the default behaviour in this build of dmenu,
+this option has no effect. retained only for compatibility.
+.TP
 .BI \-l " lines"
 dmenu lists items vertically, with the given number of lines.
 .TP
@@ -89,18 +86,6 @@ defines the selected background color.
 .TP
 .BI \-sf " color"
 defines the selected foreground color.
-.TP
-.BI \-nhb " color"
-defines the normal highlight background color.
-.TP
-.BI \-nhf " color"
-defines the normal highlight foreground color.
-.TP
-.BI \-shb " color"
-defines the selected highlight background color.
-.TP
-.BI \-shf " color"
-defines the selected highlight foreground color.
 .TP
 .B \-v
 prints version information to stdout, then exits.

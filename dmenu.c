@@ -33,15 +33,13 @@
 #define OPAQUE                0xffU
 
 /* enums */
-enum { SchemeNorm, SchemeSel, SchemeNormHighlight, SchemeSelHighlight,
-       SchemeOut, SchemeLast }; /* color schemes */
-
+enum { SchemeNorm, SchemeSel, SchemeOut, SchemeLast }; /* color schemes */
 
 struct item {
 	char *text;
 	struct item *left, *right;
 	int out;
-	double distance;
+	double score;
 };
 
 static char numbers[NUMBERSBUFSIZE] = "";
@@ -171,44 +169,6 @@ cistrstr(const char *h, const char *n)
 	return NULL;
 }
 
-static void
-drawhighlights(struct item *item, int x, int y, int maxw)
-{
-	int i, indent;
-	char *highlight;
-	char c;
-
-	if (!(strlen(item->text) && strlen(text)))
-		return;
-
-	drw_setscheme(drw, scheme[item == sel
-	                   ? SchemeSelHighlight
-	                   : SchemeNormHighlight]);
-	for (i = 0, highlight = item->text; *highlight && text[i];) {
-		if (!fstrncmp(&(*highlight), &text[i], 1)) {
-			/* get indentation */
-			c = *highlight;
-			*highlight = '\0';
-			indent = TEXTW(item->text);
-			*highlight = c;
-
-			/* highlight character */
-			c = highlight[1];
-			highlight[1] = '\0';
-			drw_text(
-				drw,
-				x + indent - (lrpad / 2),
-				y,
-				MIN(maxw - indent, TEXTW(highlight) - lrpad),
-				bh, 0, highlight, 0
-			);
-			highlight[1] = c;
-			i++;
-		}
-		highlight++;
-	}
-}
-
 static int
 drawitem(struct item *item, int x, int y, int w)
 {
@@ -224,7 +184,6 @@ drawitem(struct item *item, int x, int y, int w)
 
 	fribidi(item->text, biditext);
 	r = drw_text(drw, x, y, w, bh, lrpad / 2, biditext, 0);
-	drawhighlights(item, x, y, w);
 	return r;
 }
 
@@ -233,13 +192,19 @@ recalculatenumbers()
 {
 	unsigned int numer = 0, denom = 0;
 	struct item *item;
+
+	if (passwd)
+		return;
+
 	if (matchend) {
 		numer++;
 		for (item = matchend; item && item->left; item = item->left)
 			numer++;
 	}
+
 	for (item = items; item && item->text; item++)
 		denom++;
+
 	snprintf(numbers, NUMBERSBUFSIZE, "%d/%d", numer, denom);
 }
 
@@ -263,16 +228,17 @@ drawmenu(void)
 	w = (lines > 0 || !matches) ? mw - x : inputw;
 	drw_setscheme(drw, scheme[SchemeNorm]);
 	if (passwd) {
-	        censort = ecalloc(1, sizeof(text));
+		censort = ecalloc(1, sizeof(text));
 		memset(censort, '.', strlen(text));
 		drw_text(drw, x, 0, w, bh, lrpad / 2, censort, 0);
+		curpos = TEXTW(censort) - TEXTW(&censort[cursor]);
 		free(censort);
 	} else {
 		fribidi(text, biditext);
 		drw_text(drw, x, 0, w, bh, lrpad / 2, biditext, 0);
+		curpos = TEXTW(text) - TEXTW(&text[cursor]);
 	}
 
-	curpos = TEXTW(text) - TEXTW(&text[cursor]);
 	if ((curpos += lrpad / 2 - 1) < w) {
 		drw_setscheme(drw, scheme[SchemeNorm]);
 		drw_rect(drw, x + curpos, 2, 2, bh - 4, 1, 0);
@@ -282,7 +248,7 @@ drawmenu(void)
 	if (lines > 0) {
 		/* draw vertical list */
 		for (item = curr; item != next; item = item->right)
-			drawitem(item, x, y += bh, mw - x);
+			drawitem(item, 0, y += bh, mw);
 	} else if (matches) {
 		/* draw horizontal list */
 		x += inputw;
@@ -341,82 +307,112 @@ grabkeyboard(void)
 }
 
 int
-compare_distance(const void *a, const void *b)
+scorecmp(const void *a, const void *b)
 {
-	struct item *da = *(struct item **) a;
-	struct item *db = *(struct item **) b;
+	struct item *ia = *(struct item **)a;
+	struct item *ib = *(struct item **)b;
 
-	if (!db)
+	if (!ib)
 		return 1;
-	if (!da)
+	if (!ia)
 		return -1;
 
-	return da->distance == db->distance ? 0 : da->distance < db->distance ? -1 : 1;
+	return ia->score == ib->score ? 0 : ( ia->score > ib->score ? -1 : 1 );
 }
 
 void
 fuzzymatch(void)
 {
-	/* bang - we have so much memory */
-	struct item *it;
-	struct item **fuzzymatches = NULL;
+	struct item *item;
+	struct item **sorteditems = NULL;
 	char c;
-	int number_of_matches = 0, i, pidx, sidx, eidx;
-	int text_len = strlen(text), itext_len;
+	int matchcount = 0, i, j, startidx, endidx, substrcount;
+	int textlen, itemtextlen;
 
+	static char **tokv = NULL;
+	static int tokn = 0;
+	int tokc = 0;
+	char buf[sizeof(text)], *s;
+
+	strcpy(buf, text);
+	/* separate input text into tokens for substring matching */
+	for (s = strtok(buf, " "); s; tokv[tokc - 1] = s, s = strtok(NULL, " "))
+		if (++tokc > tokn && !(tokv = realloc(tokv, ++tokn * sizeof *tokv)))
+			die("cannot realloc %zu bytes:", tokn * sizeof *tokv);
+
+	textlen = strlen(text);
 	matches = matchend = NULL;
 
 	/* walk through all items */
-	for (it = items; it && it->text; it++) {
-		if (text_len) {
-			itext_len = strlen(it->text);
-			pidx = 0; /* pointer */
-			sidx = eidx = -1; /* start of match, end of match */
-			/* walk through item text */
-			for (i = 0; i < itext_len && (c = it->text[i]); i++) {
-				/* fuzzy match pattern */
-				if (!fstrncmp(&text[pidx], &c, 1)) {
-					if (sidx == -1)
-						sidx = i;
-					pidx++;
-					if (pidx == text_len) {
-						eidx = i;
-						break;
-					}
-				}
-			}
-			/* build list of matches */
-			if (eidx != -1) {
-				/* compute distance */
-				/* add penalty if match starts late (log(sidx+2))
-				 * add penalty for long a match without many matching characters */
-				it->distance = log(sidx + 2) + (double)(eidx - sidx - text_len);
-				/* fprintf(stderr, "distance %s %f\n", it->text, it->distance); */
-				appenditem(it, &matches, &matchend);
-				number_of_matches++;
-			}
-		} else {
-			appenditem(it, &matches, &matchend);
+	for (item = items; item && item->text; item++) {
+
+		if (!textlen) {
+			appenditem(item, &matches, &matchend);
+			continue;
 		}
+
+		itemtextlen = strlen(item->text);
+		substrcount = 0;
+		startidx = endidx = -1;
+
+		/* fuzzy match */
+		for (i = j = 0; i < itemtextlen && (c = item->text[i]); i++) {
+
+			/* skip space characters */
+			for (; j < textlen - 1 && text[j] == ' '; j++);
+
+			if (fstrncmp(&text[j], &c, 1) && text[j] != ' ')
+				continue;
+			j++;
+			if (startidx == -1)
+				startidx = i;
+			if (j == textlen) {
+				endidx = i;
+				break;
+			}
+		}
+
+		/* match based on substring */
+		for (i = 0; i < tokc; i++)
+			if (fstrstr(item->text, tokv[i]))
+				substrcount++;
+
+		/* build list of matches */
+		if (endidx == -1)
+			continue;
+		item->score =
+			  (double)(substrcount * 100)            /* prefer items with the most substring matches */
+			- (double)(endidx - startidx - textlen)  /* prefer tighter matches */
+			- log(itemtextlen + 2)                   /* prefer shorter items */
+			- log(startidx + 2);                     /* prefer matches that start earlier */
+		appenditem(item, &matches, &matchend);
+		matchcount++;
 	}
 
-	if (number_of_matches) {
+	if (matchcount) {
+
 		/* initialize array with matches */
-		if (!(fuzzymatches = realloc(fuzzymatches, number_of_matches * sizeof(struct item*))))
-			die("cannot realloc %u bytes:", number_of_matches * sizeof(struct item*));
-		for (i = 0, it = matches; it && i < number_of_matches; i++, it = it->right) {
-			fuzzymatches[i] = it;
-		}
-		/* sort matches according to distance */
-		qsort(fuzzymatches, number_of_matches, sizeof(struct item*), compare_distance);
+		if (!(sorteditems = realloc(sorteditems, matchcount * sizeof(struct item*))))
+			die("cannot realloc %u bytes:", matchcount * sizeof(struct item*));
+
+		for (i = 0, item = matches; item && i < matchcount; i++, item = item->right)
+			sorteditems[i] = item;
+
+		/* sort matches according to score */
+		qsort(sorteditems, matchcount, sizeof(struct item*), scorecmp);
+
 		/* rebuild list of matches */
 		matches = matchend = NULL;
-		for (i = 0, it = fuzzymatches[i];  i < number_of_matches && it && \
-				it->text; i++, it = fuzzymatches[i]) {
-			appenditem(it, &matches, &matchend);
+		for (i = 0, item = sorteditems[i];
+			i < matchcount && item && item->text;
+			i++, item = sorteditems[i])
+		{
+			appenditem(item, &matches, &matchend);
 		}
-		free(fuzzymatches);
+
+		free(sorteditems);
 	}
+
 	curr = sel = matches;
 	calcoffsets();
 }
@@ -424,10 +420,6 @@ fuzzymatch(void)
 static void
 match(void)
 {
-	if (fuzzy) {
-		fuzzymatch();
-		return;
-	}
 	static char **tokv = NULL;
 	static int tokn = 0;
 
@@ -435,6 +427,11 @@ match(void)
 	int i, tokc = 0;
 	size_t len, textsize;
 	struct item *item, *lprefix, *lsubstr, *prefixend, *substrend;
+
+	if (fuzzy) {
+		fuzzymatch();
+		return;
+	}
 
 	strcpy(buf, text);
 	/* separate input text into tokens to be matched individually */
@@ -712,9 +709,9 @@ insert:
 	case XK_Tab:
 		if (!sel)
 			return;
-		strncpy(text, sel->text, sizeof text - 1);
-		text[sizeof text - 1] = '\0';
-		cursor = strlen(text);
+		cursor = strnlen(sel->text, sizeof text - 1);
+		memcpy(text, sel->text, cursor);
+		text[cursor] = '\0';
 		match();
 		break;
 	}
@@ -894,22 +891,23 @@ paste(void)
 static void
 readstdin(void)
 {
-	char buf[sizeof text], *p;
-	size_t i, size = 0;
+	char *line = NULL;
+	size_t i, junk, size = 0;
+	ssize_t len;
+
 	if (passwd) {
     	inputw = lines = 0;
     	return;
   	}
 
 	/* read each line from stdin and add it to the item list */
-	for (i = 0; fgets(buf, sizeof buf, stdin); i++) {
+	for (i = 0; (len = getline(&line, &junk, stdin)) != -1; i++, line = NULL) {
 		if (i + 1 >= size / sizeof *items)
 			if (!(items = realloc(items, (size += BUFSIZ))))
 				die("cannot realloc %zu bytes:", size);
-		if ((p = strchr(buf, '\n')))
-			*p = '\0';
-		if (!(items[i].text = strdup(buf)))
-			die("cannot strdup %zu bytes:", strlen(buf) + 1);
+		if (line[len - 1] == '\n')
+			line[len - 1] = '\0';
+		items[i].text = line;
 		items[i].out = 0;
 	}
 	if (items)
@@ -976,6 +974,7 @@ setup(void)
 	Window pw;
 	int a, di, n, area = 0;
 #endif
+
 	/* init appearance */
 	for (j = 0; j < SchemeLast; j++)
 		scheme[j] = drw_scm_create(drw, colors[j], alphas[i], 2);
@@ -1040,10 +1039,10 @@ setup(void)
 	swa.event_mask = ExposureMask | KeyPressMask | VisibilityChangeMask |
 	                 ButtonPressMask | PointerMotionMask;
 	win = XCreateWindow(dpy, parentwin, x, y, mw, mh, 0,
-	                    depth, CopyFromParent, visual,
-	                    CWOverrideRedirect | CWBackPixel | CWBorderPixel | CWColormap | CWEventMask, &swa);
-	XSetClassHint(dpy, win, &ch);
+		depth, CopyFromParent, visual,
+		CWOverrideRedirect | CWBackPixel | CWBorderPixel | CWColormap | CWEventMask, &swa);
 
+	XSetClassHint(dpy, win, &ch);
 
 	/* input methods */
 	if ((xim = XOpenIM(dpy, NULL, NULL, NULL)) == NULL)
@@ -1077,9 +1076,8 @@ setup(void)
 static void
 usage(void)
 {
-	fputs("usage: dmenu [-bFPfsv] [-l lines] [-p prompt] [-fn font] [-m monitor]\n"
-	      "             [-nb color] [-nf color] [-sb color] [-sf color]\n"
-	      "             [-nhb color] [-nhf color] [-shb color] [-shf color] [-w windowid]\n", stderr);
+	fputs("usage: dmenu [-bFPfsiv] [-l lines] [-p prompt] [-fn font] [-m monitor]\n"
+	      "             [-nb color] [-nf color] [-sb color] [-sf color] [-w windowid]\n", stderr);
 	exit(1);
 }
 
@@ -1098,7 +1096,7 @@ main(int argc, char *argv[])
 			topbar = 0;
 		else if (!strcmp(argv[i], "-f"))   /* grabs keyboard before reading stdin */
 			fast = 1;
-		else if (!strcmp(argv[i], "-F"))   /* grabs keyboard before reading stdin */
+		else if (!strcmp(argv[i], "-F"))   /* enables fuzzy matching */
 			fuzzy = 0;
 		else if (!strcmp(argv[i], "-s")) { /* case-sensitive item matching */
 			fstrncmp = strncmp;
@@ -1107,8 +1105,7 @@ main(int argc, char *argv[])
 		else if (!strcmp(argv[i], "-P"))   /* input password */
 			passwd = 1;
 		/* case-insensitive item matching
-		 * deprecated because of case-insensitive patch;
-		 * only here for compatiblity */
+		 * unneeded because of the case-insensitive patch; retained only for compatiblity */
 		else if (!strcmp(argv[i], "-i")) {}
 		else if (i + 1 == argc)
 			usage();
@@ -1122,21 +1119,13 @@ main(int argc, char *argv[])
 		else if (!strcmp(argv[i], "-fn"))  /* font or font set */
 			fonts[0] = argv[++i];
 		else if (!strcmp(argv[i], "-nb"))  /* normal background color */
-			colors[SchemeNorm][ColBg] = colors[SchemeNormHighlight][ColBg] = argv[++i];
+			colors[SchemeNorm][ColBg] = argv[++i];
 		else if (!strcmp(argv[i], "-nf"))  /* normal foreground color */
-			colors[SchemeNorm][ColFg] = colors[SchemeNormHighlight][ColFg] = argv[++i];
+			colors[SchemeNorm][ColFg] = argv[++i];
 		else if (!strcmp(argv[i], "-sb"))  /* selected background color */
-			colors[SchemeSel][ColBg] = colors[SchemeSelHighlight][ColBg] = argv[++i];
+			colors[SchemeSel][ColBg] = argv[++i];
 		else if (!strcmp(argv[i], "-sf"))  /* selected foreground color */
-			colors[SchemeSel][ColFg] = colors[SchemeSelHighlight][ColFg] = argv[++i];
-		else if (!strcmp(argv[i], "-nhb")) /* normal hi background color */
-			colors[SchemeNormHighlight][ColBg] = argv[++i];
-		else if (!strcmp(argv[i], "-nhf")) /* normal hi foreground color */
-			colors[SchemeNormHighlight][ColFg] = argv[++i];
-		else if (!strcmp(argv[i], "-shb")) /* selected hi background color */
-			colors[SchemeSelHighlight][ColBg] = argv[++i];
-		else if (!strcmp(argv[i], "-shf")) /* selected hi foreground color */
-			colors[SchemeSelHighlight][ColFg] = argv[++i];
+			colors[SchemeSel][ColFg] = argv[++i];
 		else if (!strcmp(argv[i], "-w"))   /* embedding window id */
 			embed = argv[++i];
 		else

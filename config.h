@@ -1,40 +1,40 @@
 /* See LICENSE file for copyright and license details. */
 /* Default settings; can be overriden by command line. */
 
-/* which layout to set the keyboard to while dmenu is running. the layout will be
- * restored to it's previous state after dmenu's exit. layouts start from zero.
- * negative values disable this feature. */
-static int xkblayout = 0;
+static int topbar = 1;                       /* -b option; if 0, dmenu appears at bottom */
+static unsigned int lines = 0;               /* -l option; if nonzero, dmenu uses vertical list with given number of lines */
+static int fuzzy = 1;                        /* -F option; if 0, dmenu doesn't use fuzzy matching */
+static const unsigned int alpha = 255;       /* transparency; 0 to 255 */
+static const char *prompt = NULL;            /* -p option; prompt to the left of input field */
 
-static int topbar = 1; /* -b option; if 0, dmenu appears at bottom */
-static int fuzzy = 1;  /* -F option; if 0, dmenu doesn't use fuzzy matching */
-static const char *prompt = NULL; /* -p option; prompt to the left of input field */
-static const unsigned int alpha = 0xff;
+/* the keyboard layout to set the keyboard to while dmenu is running.
+ * the layout will be restored to it's previous state after dmenu's exit.
+ * layouts start from zero. set to a negative value to disable this feature. */
+static int xkblayout = 0;
 
 /* -fn option overrides fonts[0]; default X11 font or font set */
 static const char *fonts[] = {
-	"peep:size=12",
-	"Vazirmatn NL:size=10",
-	"Symbols Nerd Font:size=11",
+	"Signika Negative:size=13",
+	":lang=fa:spacing=mono:size=12",
+	"Symbols Nerd Font:size=10",
 };
 
+static const char normfg[]    = "#777777";
+static const char bgcol[]     = "#0f161e";
+static const char selbgcol[]  = "#30403f";
 static const char *colors[SchemeLast][2] = {
-	/*                         fg          bg        */
-	[SchemeNorm]           = { "#777777", "#000000"  },
-	[SchemeNormHighlight]  = { "#777777", "#000000"  },
-	[SchemeSel]            = { "#d0d0d0", "#30403f"  },
-	[SchemeSelHighlight]   = { "#d6a328", "#30403f"  },
-	[SchemeOut]            = { "black",   "darkcyan" },
+	/*               fg          bg        */
+	[SchemeNorm] = { normfg,     bgcol     },
+	[SchemeSel]  = { "#d0d0d0",  selbgcol  },
+	[SchemeOut]  = { "black",    "darkcyan" },
 };
 
 static const unsigned int alphas[SchemeLast][2] = {
+	/*               fg      bg    */
 	[SchemeNorm] = { OPAQUE, alpha },
 	[SchemeSel]  = { OPAQUE, alpha },
 	[SchemeOut]  = { OPAQUE, alpha },
 };
-
-/* -l option; if nonzero, dmenu uses vertical list with given number of lines */
-static unsigned int lines = 0;
 
 /* characters not considered part of a word while deleting words; for example: " /?\"&[]" */
 static const char worddelimiters[] = " ";
