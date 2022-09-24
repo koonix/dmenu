@@ -39,7 +39,7 @@ struct item {
 	char *text;
 	struct item *left, *right;
 	int out;
-	double distance;
+	double score;
 };
 
 static char numbers[NUMBERSBUFSIZE] = "";
@@ -300,82 +300,112 @@ grabkeyboard(void)
 }
 
 int
-compare_distance(const void *a, const void *b)
+scorecmp(const void *a, const void *b)
 {
-	struct item *da = *(struct item **) a;
-	struct item *db = *(struct item **) b;
+	struct item *ia = *(struct item **)a;
+	struct item *ib = *(struct item **)b;
 
-	if (!db)
+	if (!ib)
 		return 1;
-	if (!da)
+	if (!ia)
 		return -1;
 
-	return da->distance == db->distance ? 0 : da->distance < db->distance ? -1 : 1;
+	return ia->score == ib->score ? 0 : ( ia->score > ib->score ? -1 : 1 );
 }
 
 void
 fuzzymatch(void)
 {
-	/* bang - we have so much memory */
-	struct item *it;
-	struct item **fuzzymatches = NULL;
+	struct item *item;
+	struct item **sorteditems = NULL;
 	char c;
-	int number_of_matches = 0, i, pidx, sidx, eidx;
-	int text_len = strlen(text), itext_len;
+	int matchcount = 0, i, j, startidx, endidx, substrcount;
+	int textlen, itemtextlen;
 
+	static char **tokv = NULL;
+	static int tokn = 0;
+	int tokc = 0;
+	char buf[sizeof(text)], *s;
+
+	strcpy(buf, text);
+	/* separate input text into tokens for substring matching */
+	for (s = strtok(buf, " "); s; tokv[tokc - 1] = s, s = strtok(NULL, " "))
+		if (++tokc > tokn && !(tokv = realloc(tokv, ++tokn * sizeof *tokv)))
+			die("cannot realloc %zu bytes:", tokn * sizeof *tokv);
+
+	textlen = strlen(text);
 	matches = matchend = NULL;
 
 	/* walk through all items */
-	for (it = items; it && it->text; it++) {
-		if (text_len) {
-			itext_len = strlen(it->text);
-			pidx = 0; /* pointer */
-			sidx = eidx = -1; /* start of match, end of match */
-			/* walk through item text */
-			for (i = 0; i < itext_len && (c = it->text[i]); i++) {
-				/* fuzzy match pattern */
-				if (!fstrncmp(&text[pidx], &c, 1)) {
-					if (sidx == -1)
-						sidx = i;
-					pidx++;
-					if (pidx == text_len) {
-						eidx = i;
-						break;
-					}
-				}
-			}
-			/* build list of matches */
-			if (eidx != -1) {
-				/* compute distance */
-				/* add penalty if match starts late (log(sidx+2))
-				 * add penalty for long a match without many matching characters */
-				it->distance = log(sidx + 2) + (double)(eidx - sidx - text_len);
-				/* fprintf(stderr, "distance %s %f\n", it->text, it->distance); */
-				appenditem(it, &matches, &matchend);
-				number_of_matches++;
-			}
-		} else {
-			appenditem(it, &matches, &matchend);
+	for (item = items; item && item->text; item++) {
+
+		if (!textlen) {
+			appenditem(item, &matches, &matchend);
+			continue;
 		}
+
+		itemtextlen = strlen(item->text);
+		substrcount = 0;
+		startidx = endidx = -1;
+
+		/* fuzzy match */
+		for (i = j = 0; i < itemtextlen && (c = item->text[i]); i++) {
+
+			/* skip space characters */
+			for (; j < textlen - 1 && text[j] == ' '; j++);
+
+			if (fstrncmp(&text[j], &c, 1) && text[j] != ' ')
+				continue;
+			j++;
+			if (startidx == -1)
+				startidx = i;
+			if (j == textlen) {
+				endidx = i;
+				break;
+			}
+		}
+
+		/* match based on substring */
+		for (i = 0; i < tokc; i++)
+			if (fstrstr(item->text, tokv[i]))
+				substrcount++;
+
+		/* build list of matches */
+		if (endidx == -1)
+			continue;
+		item->score =
+			  (double)(substrcount * 100)            /* prefer items with the most substring matches */
+			- (double)(endidx - startidx - textlen)  /* prefer tighter matches */
+			- log(itemtextlen + 2)                   /* prefer shorter items */
+			- log(startidx + 2);                     /* prefer matches that start earlier */
+		appenditem(item, &matches, &matchend);
+		matchcount++;
 	}
 
-	if (number_of_matches) {
+	if (matchcount) {
+
 		/* initialize array with matches */
-		if (!(fuzzymatches = realloc(fuzzymatches, number_of_matches * sizeof(struct item*))))
-			die("cannot realloc %u bytes:", number_of_matches * sizeof(struct item*));
-		for (i = 0, it = matches; it && i < number_of_matches; i++, it = it->right) {
-			fuzzymatches[i] = it;
-		}
-		/* sort matches according to distance */
-		qsort(fuzzymatches, number_of_matches, sizeof(struct item*), compare_distance);
+		if (!(sorteditems = realloc(sorteditems, matchcount * sizeof(struct item*))))
+			die("cannot realloc %u bytes:", matchcount * sizeof(struct item*));
+
+		for (i = 0, item = matches; item && i < matchcount; i++, item = item->right)
+			sorteditems[i] = item;
+
+		/* sort matches according to score */
+		qsort(sorteditems, matchcount, sizeof(struct item*), scorecmp);
+
 		/* rebuild list of matches */
 		matches = matchend = NULL;
-		for (i = 0, it = fuzzymatches[i];  i < number_of_matches && it && \
-				it->text; i++, it = fuzzymatches[i]) {
-			appenditem(it, &matches, &matchend);
+		for (i = 0, item = sorteditems[i];
+			i < matchcount && item && item->text;
+			i++, item = sorteditems[i])
+		{
+			appenditem(item, &matches, &matchend);
 		}
-		free(fuzzymatches);
+
+		free(sorteditems);
 	}
+
 	curr = sel = matches;
 	calcoffsets();
 }
