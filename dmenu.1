@@ -3,7 +3,7 @@
 dmenu \- dynamic menu
 .SH SYNOPSIS
 .B dmenu
-.RB [ \-bFPfsv ]
+.RB [ \-bFPfsiv ]
 .RB [ \-l
 .IR lines ]
 .RB [ \-m
@@ -53,6 +53,11 @@ is faster, but will lock up X until stdin reaches end\-of\-file.
 .TP
 .B \-s
 dmenu matches menu items case sensitively.
+.TP
+.B \-i
+dmenu matches menu items case insensitively.
+since this is the default behaviour in this build of dmenu,
+this option has no effect. retained only for compatibility.
 .TP
 .BI \-l " lines"
 dmenu lists items vertically, with the given number of lines.
