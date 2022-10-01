@@ -248,7 +248,7 @@ drawmenu(void)
 	if (lines > 0) {
 		/* draw vertical list */
 		for (item = curr; item != next; item = item->right)
-			drawitem(item, 0, y += bh, mw);
+			drawitem(item, vertfull ? 0 : x, y += bh, mw);
 	} else if (matches) {
 		/* draw horizontal list */
 		x += inputw;

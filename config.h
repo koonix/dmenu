@@ -6,6 +6,7 @@ static unsigned int lines = 0;               /* -l option; if nonzero, dmenu use
 static int fuzzy = 1;                        /* -F option; if 0, dmenu doesn't use fuzzy matching */
 static const unsigned int alpha = 255;       /* transparency; 0 to 255 */
 static const char *prompt = NULL;            /* -p option; prompt to the left of input field */
+static const int vertfull = 0;            /* indent vertical items to prompt length */
 
 /* the keyboard layout to set the keyboard to while dmenu is running.
  * the layout will be restored to it's previous state after dmenu's exit.
