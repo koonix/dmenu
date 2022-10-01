@@ -38,6 +38,6 @@ static const unsigned int alphas[SchemeLast][2] = {
 };
 
 /* characters not considered part of a word while deleting words; for example: " /?\"&[]" */
-static const char worddelimiters[] = " ";
+static const char worddelimiters[] = " \t-_`'\"()[]{}<>";
 
 // vim:noexpandtab
