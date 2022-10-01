@@ -37,6 +37,19 @@ static const unsigned int alphas[SchemeLast][2] = {
 	[SchemeOut]  = { OPAQUE, alpha },
 };
 
+/* fuzzy match parameters */
+static const double matchparams[] = {
+	[BoundaryBonus]  = 2.0, /* bonus given to boundary characters */
+	[FirstCharBonus] = 2.0, /* bonus given to matches of the first character of the pattern */
+	[ConsecBonusInc] = 1.0, /* increase the bonus of the consecutive matches this much per match */
+	[FuzzyMultiplier]      = 8.0, /* preference of the actual fuzzy score */
+	[ItemLengthMultiplier] = 2.0, /* preference of shorter items */
+	[EarlyMatchMultiplier] = 1.0, /* preference of matches that start earlier */
+};
+
+/* boundary characters in fuzzy match */
+static const char boundarychars[] = " \t-_/.,:;|\"";
+
 /* characters not considered part of a word while deleting words; for example: " /?\"&[]" */
 static const char worddelimiters[] = " \t-_`'\"()[]{}<>";
 

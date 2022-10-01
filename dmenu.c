@@ -34,6 +34,8 @@
 
 /* enums */
 enum { SchemeNorm, SchemeSel, SchemeOut, SchemeLast }; /* color schemes */
+enum { BoundaryBonus, FirstCharBonus, ConsecBonusInc, FuzzyMultiplier,
+       ItemLengthMultiplier, EarlyMatchMultiplier }; /* fuzzy parameters */
 
 struct item {
 	char *text;
@@ -306,7 +308,7 @@ grabkeyboard(void)
 	die("cannot grab keyboard");
 }
 
-int
+static int
 scorecmp(const void *a, const void *b)
 {
 	struct item *ia = *(struct item **)a;
@@ -320,88 +322,153 @@ scorecmp(const void *a, const void *b)
 	return ia->score == ib->score ? 0 : ( ia->score > ib->score ? -1 : 1 );
 }
 
-void
+static int
+isuppercase(char c)
+{
+	return (c >= 'A' && c <= 'Z');
+}
+
+static int
+isboundary(char c)
+{
+	for (int i = 0; i < LENGTH(boundarychars) - 1; i++)
+		if (boundarychars[i] == c)
+			return 1;
+	return 0;
+}
+
+static int
+getfuzzyscore(char *text, char *pattern, double *score_ret, int *startidx_ret)
+{
+	int matched = 0, i = 0, j = 0, startidx = -1, endidx, lastmatchidx = -1;
+	double score, bonus = 0, bonusinc, lastbonusinc, consecbonus = -1, firstcharbonus;
+	size_t textlen = strlen(text);
+	size_t patlen = strlen(pattern);
+
+	for (; i < textlen && text[i]; i++) {
+
+		if (fstrncmp(&pattern[j], &text[i], 1))
+			continue;
+
+		bonusinc = 0;
+
+		/* give bonus for consecutive matches */
+		if (i > 0 && lastmatchidx == i - 1) {
+			if (consecbonus == -1)
+				consecbonus = lastbonusinc;
+			consecbonus += matchparams[ConsecBonusInc];
+			bonusinc += consecbonus;
+		} else {
+			consecbonus = -1;
+		}
+
+		/* give bonus for boundary characters */
+		firstcharbonus = j == 0 ? matchparams[FirstCharBonus] : 0;
+		if (i == 0)
+			bonusinc += matchparams[BoundaryBonus] + firstcharbonus;
+		if (i > 0 && isuppercase(text[i]) && !isuppercase(text[i - 1]))
+			bonusinc += matchparams[BoundaryBonus] + firstcharbonus;
+		if (i > 0 && isboundary(text[i - 1]) && !isboundary(text[i]))
+			bonusinc += matchparams[BoundaryBonus] + firstcharbonus;
+
+		lastbonusinc = bonusinc;
+		bonus += bonusinc;
+
+		j++;
+		lastmatchidx = i;
+
+		if (startidx == -1)
+			startidx = i;
+
+		/* reached end of pattern */
+		if (j == patlen) {
+			endidx = i;
+			score = startidx - endidx + bonus;
+			if (!matched || score > *score_ret) {
+				matched = 1;
+				*score_ret = score;
+				*startidx_ret = startidx;
+			}
+			/* re-run the pattern from startidx+1 to potentially find a tighter match */
+			i = startidx + 1;
+			j = bonus = 0;
+			startidx = lastmatchidx = consecbonus = -1;
+		}
+	}
+
+	return matched;
+}
+
+static void
 fuzzymatch(void)
 {
-	struct item *item;
-	struct item **sorteditems = NULL;
-	char c;
-	int matchcount = 0, i, j, startidx, endidx, substrcount;
-	int textlen, itemtextlen;
-
+	/* separate input text into space-separated tokens */
 	static char **tokv = NULL;
 	static int tokn = 0;
 	int tokc = 0;
-	char buf[sizeof(text)], *s;
-
+	char *s, buf[sizeof(text)];
 	strcpy(buf, text);
-	/* separate input text into tokens for substring matching */
 	for (s = strtok(buf, " "); s; tokv[tokc - 1] = s, s = strtok(NULL, " "))
 		if (++tokc > tokn && !(tokv = realloc(tokv, ++tokn * sizeof *tokv)))
 			die("cannot realloc %zu bytes:", tokn * sizeof *tokv);
 
-	textlen = strlen(text);
+	int textlen = strlen(text);
+	int matchcount = 0;
 	matches = matchend = NULL;
 
-	/* walk through all items */
-	for (item = items; item && item->text; item++) {
+	/* if the input text is just whitespace, treat it as an empty input */
+	{
+		int i;
+		for (i = 0; i < textlen && text[i] == ' '; i++);
+		if (i == textlen)
+			textlen = 0;
+	}
 
-		if (!textlen) {
+	/* walk through all items */
+	for (struct item *item = items; item && item->text; item++) {
+
+		if (textlen == 0) {
 			appenditem(item, &matches, &matchend);
 			continue;
 		}
 
-		itemtextlen = strlen(item->text);
-		substrcount = 0;
-		startidx = endidx = -1;
+		int itemtextlen = strlen(item->text), matched = 0, startidx;
+		double fuzzyscore = 0;
 
-		/* fuzzy match */
-		for (i = j = 0; i < itemtextlen && (c = item->text[i]); i++) {
+		/* walk through input text tokens */
+		for (int tokidx = 0; tokidx < tokc; tokidx++) {
 
-			/* skip space characters */
-			for (; j < textlen - 1 && text[j] == ' '; j++);
-
-			if (fstrncmp(&text[j], &c, 1) && text[j] != ' ')
-				continue;
-			j++;
-			if (startidx == -1)
-				startidx = i;
-			if (j == textlen) {
-				endidx = i;
+			double tmpscore;
+			matched = getfuzzyscore(item->text, tokv[tokidx], &tmpscore, &startidx);
+			if (!matched)
 				break;
-			}
+			fuzzyscore += tmpscore;
 		}
 
-		/* match based on substring */
-		for (i = 0; i < tokc; i++)
-			if (fstrstr(item->text, tokv[i]))
-				substrcount++;
-
 		/* build list of matches */
-		if (endidx == -1)
-			continue;
-		item->score =
-			  (double)(substrcount * 100)            /* prefer items with the most substring matches */
-			- (double)(endidx - startidx - textlen)  /* prefer tighter matches */
-			- log(itemtextlen + 2)                   /* prefer shorter items */
-			- log(startidx + 2);                     /* prefer matches that start earlier */
-		appenditem(item, &matches, &matchend);
-		matchcount++;
+		if (matched) {
+			item->score =
+				  (fuzzyscore * matchparams[FuzzyMultiplier])
+				- (log(itemtextlen + 2) * matchparams[ItemLengthMultiplier])
+				- (log(startidx    + 2) * matchparams[EarlyMatchMultiplier]);
+			appenditem(item, &matches, &matchend);
+			matchcount++;
+		}
 	}
 
 	if (matchcount) {
 
-		/* initialize array with matches */
+		struct item *item, **sorteditems = NULL;
+		int i;
+
+		/* build a temporary list of matches, sorted according to score */
 		if (!(sorteditems = realloc(sorteditems, matchcount * sizeof(struct item*))))
 			die("cannot realloc %u bytes:", matchcount * sizeof(struct item*));
-
 		for (i = 0, item = matches; item && i < matchcount; i++, item = item->right)
 			sorteditems[i] = item;
-
-		/* sort matches according to score */
 		qsort(sorteditems, matchcount, sizeof(struct item*), scorecmp);
 
-		/* rebuild list of matches */
+		/* repopulate the list of matches with the sorted list */
 		matches = matchend = NULL;
 		for (i = 0, item = sorteditems[i];
 			i < matchcount && item && item->text;
@@ -420,6 +487,11 @@ fuzzymatch(void)
 static void
 match(void)
 {
+	if (fuzzy) {
+		fuzzymatch();
+		return;
+	}
+
 	static char **tokv = NULL;
 	static int tokn = 0;
 
@@ -427,11 +499,6 @@ match(void)
 	int i, tokc = 0;
 	size_t len, textsize;
 	struct item *item, *lprefix, *lsubstr, *prefixend, *substrend;
-
-	if (fuzzy) {
-		fuzzymatch();
-		return;
-	}
 
 	strcpy(buf, text);
 	/* separate input text into tokens to be matched individually */
