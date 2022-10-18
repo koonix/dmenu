@@ -437,7 +437,6 @@ fuzzymatch(void)
 
 		/* walk through input text tokens */
 		for (int tokidx = 0; tokidx < tokc; tokidx++) {
-
 			double tmpscore;
 			matched = getfuzzyscore(item->text, tokv[tokidx], &tmpscore, &startidx);
 			if (!matched)
