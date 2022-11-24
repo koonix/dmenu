@@ -34,7 +34,7 @@
 
 /* enums */
 enum { SchemeNorm, SchemeSel, SchemeOut, SchemeLast }; /* color schemes */
-enum { BoundaryBonus, FirstCharBonus, ConsecBonusInc, FuzzyMultiplier,
+enum { BoundaryBonus, FirstPtrnCharBonus, ConsecBonusInc, FuzzyMultiplier,
        ItemLengthMultiplier, EarlyMatchMultiplier }; /* fuzzy parameters */
 
 struct item {
@@ -341,7 +341,7 @@ static int
 getfuzzyscore(char *text, char *pattern, double *score_ret, int *startidx_ret)
 {
 	int matched = 0, i = 0, j = 0, startidx = -1, endidx, lastmatchidx = -1;
-	double score, bonus = 0, bonusinc, lastbonusinc, consecbonus = -1, firstcharbonus;
+	double score, bonus = 0, bonusinc, lastbonusinc, consecbonus = -1, fpcbonus;
 	size_t textlen = strlen(text);
 	size_t patlen = strlen(pattern);
 
@@ -363,13 +363,13 @@ getfuzzyscore(char *text, char *pattern, double *score_ret, int *startidx_ret)
 		}
 
 		/* give bonus for boundary characters */
-		firstcharbonus = j == 0 ? matchparams[FirstCharBonus] : 0;
+		fpcbonus = j == 0 ? matchparams[FirstPtrnCharBonus] : 0;
 		if (i == 0)
-			bonusinc += matchparams[BoundaryBonus] + firstcharbonus;
+			bonusinc += (matchparams[BoundaryBonus] + fpcbonus) * 2;
 		if (i > 0 && isuppercase(text[i]) && !isuppercase(text[i - 1]))
-			bonusinc += matchparams[BoundaryBonus] + firstcharbonus;
+			bonusinc += matchparams[BoundaryBonus] + fpcbonus;
 		if (i > 0 && isboundary(text[i - 1]) && !isboundary(text[i]))
-			bonusinc += matchparams[BoundaryBonus] + firstcharbonus;
+			bonusinc += matchparams[BoundaryBonus] + fpcbonus;
 
 		lastbonusinc = bonusinc;
 		bonus += bonusinc;
@@ -1271,5 +1271,9 @@ xinitvisual()
 		cmap = DefaultColormap(dpy, screen);
 	}
 }
+
+/*
+	TODO:
+*/
 
 // vim:noexpandtab

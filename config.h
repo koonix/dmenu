@@ -39,9 +39,9 @@ static const unsigned int alphas[SchemeLast][2] = {
 
 /* fuzzy match parameters */
 static const double matchparams[] = {
-	[BoundaryBonus]  = 2.0, /* bonus given to boundary characters */
-	[FirstCharBonus] = 2.0, /* bonus given to matches of the first character of the pattern */
-	[ConsecBonusInc] = 1.0, /* increase the bonus of consecutive matches by this amount per match */
+	[BoundaryBonus]      = 2.0, /* bonus given to boundary characters */
+	[FirstPtrnCharBonus] = 2.0, /* bonus given to matches of the first character of the pattern */
+	[ConsecBonusInc]     = 1.0, /* increase the bonus of consecutive matches by this amount per match */
 	[FuzzyMultiplier]      = 8.0, /* preference of the actual fuzzy score */
 	[ItemLengthMultiplier] = 2.0, /* preference of shorter items */
 	[EarlyMatchMultiplier] = 1.0, /* preference of matches that start earlier */
